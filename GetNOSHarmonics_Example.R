@@ -1,45 +1,61 @@
 ############################################
 # Matthew V. Bilskie, PhD
-# Copyright 2019
+# Copyright 2018
 # Louisiana State University
 # Center for Coastal Resiliency
 # www.lsu.edu/ccr
 # www.mattbilskie.com
 ############################################
 #
-# R function to gather NOAA Co-ops
-# tidal harmonic data
+# Gather NOAA NOS water levels
 # https://tidesandcurrents.noaa.gov/api/
 #
 ############################################
 
-getNOSHarmonics <- function(gageID){
+library(ggplot2)
+library(lubridate)
+source("getNOSHarmonics.R")
 
-require(rvest) # For web-scraping
-require(NISTunits) # For radians/degrees conversion\
+setwd("./")
 
-# Scrape NOS Tides/Currents Harmonics Page to obtain a table of harmonic constituent information
-#nosID <- '8741041'
-url <- paste('https://www.tidesandcurrents.noaa.gov/harcon.html?unit=0&timezone=0&id=',gageID,sep="")
-webpage <- read_html(url)
-#Using CSS selectors to scrap the rankings section
-text <- html_nodes(webpage,'td')
-#Converting the ranking data to text
-data <- toString(html_text(text)) # toString converts it to a single line
-# parse data and move to data frame
-data.df <- read.table(text=data,sep = ",",col.names=c("ID", "Name", "Amp_m","Pha_deg","Speed_deg_hr","Desc"))
+stationList <- list("8741041","8741196")
 
-# Prepare data for plotting
-const.df <- data.df
-# Convert phase from degrees to radians and speed to rad/sec
-const.df$Pha_rad <- NISTdegTOradian(data.df$Pha_deg)
-const.df$Speed_rad_sec <- NISTdegTOradian(data.df$Speed_deg_hr) / 3600.0
-# Clean up data frame and re-order
-const.df$Pha_deg <- NULL
-const.df$Speed_deg_hr <- NULL
-# Reorder data frame
-const.df <- const.df[c("ID","Name","Amp_m","Pha_rad","Speed_rad_sec","Desc")]
+for(station in stationList){
+  print(paste("Working on",station))
 
-return(const.df)
+  # Grab the data!
+  data <- getNOSHarmonics(station)
+  data$Pha_deg <- NISTradianTOdeg(data$Pha_rad)
+  data$Station <- station
+  
+  # Add to full dataset
+  dataAll <- rbind(data,dataAll)
+  
+  # Save to CSV file
+  write.table(format(data[,c("Amp_m","Pha_deg")], digits=4), file = paste("NOAA",station,"_Resynthesis",".txt", sep = ""),
+              col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
 
+  
+  time <- seq(0, 86400*14, 60*60)
+  watlev <- vector(mode="numeric", length=length(time))
+  for (c in 1:length(data$Name)) {
+    for (t in 1:length(time)) {
+      watlev[t] <- watlev[t] + data$Amp_m[c] * cos(time[t]*data$Speed_rad_sec[c] + data$Pha_rad[c])
+    }
+  }
+  
+  plotter.df <- data.frame(time,watlev)
+  plot <- ggplot(plotter.df, aes(x = time/86400, y = watlev, color = "Resynthesis")) +
+    geom_line(group = 1, size = 1.25) +
+    scale_color_manual(values = c("black")) +
+    scale_y_continuous(limits=c(-1,1)) +
+    ylab("Water Level (m)") +
+    xlab("Days") +
+    labs(title = paste("NOAA",station)) +
+    theme_bw() +
+    theme(legend.position = c(0.075,0.9),legend.margin=margin(t=0,unit="cm"),legend.title=element_blank())
+  plot
+  ggsave(paste("NOAA",station,"_Resynthesis.png",sep=""), dpi = 300, width = 10, height = 5, units = "in")
+  
 }
+
