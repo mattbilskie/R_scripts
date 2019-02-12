@@ -1,0 +1,62 @@
+---
+title: "R Notebook"
+author: "Matthew V. Bilskie"
+date: "February 2019"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+````{r}
+require(rvest) # For web-scraping
+require(NISTunits) # For radians/degrees conversion\
+````
+
+```{r}
+# Scrape NOS Tides/Currents Harmonics Page to obtain a table of harmonic constituent information
+nosID <- '8741041'
+url <- paste('https://www.tidesandcurrents.noaa.gov/harcon.html?unit=0&timezone=0&id=',nosID,sep="")
+webpage <- read_html(url)
+#Using CSS selectors to scrap the rankings section
+text <- html_nodes(webpage,'td')
+#Converting the ranking data to text
+data <- toString(html_text(text)) # toString converts it to a single line
+# parse data and move to data frame
+data.df <- read.table(text=data,sep = ",",col.names=c("ID", "Name", "Amp_m","Pha_deg","Speed_deg_hr","Desc"))
+head(data.df)
+```
+
+```{r}
+# Prepare data for plotting
+const.df <- data.df
+# Convert phase from degrees to radians and speed to rad/sec
+const.df$Pha_rad <- NISTdegTOradian(data.df$Pha_deg)
+const.df$Speed_rad_sec <- NISTdegTOradian(data.df$Speed_deg_hr) / 3600.0
+# Clean up data frame and re-order
+const.df$Pha_deg <- NULL
+const.df$Speed_deg_hr <- NULL
+# Reorder data frame
+const.df <- const.df[c("ID","Name","Amp_m","Pha_rad","Speed_rad_sec","Desc")]
+head(const.df)
+```
+
+
+````{r}
+# 
+time <- seq(0, 86400*14, 60*60)
+watlev <- vector(mode="numeric", length=length(time))
+for (c in 1:length(const.df$Name)) {
+  for (t in 1:length(time)) {
+    watlev[t] <- watlev[t] + const.df$Amp_m[c] * cos(time[t]*const.df$Speed_rad_sec[c] + const.df$Pha_rad[c])
+  }
+}
+
+plot(time,watlev)
+
+````
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
