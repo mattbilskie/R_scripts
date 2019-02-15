@@ -28,9 +28,6 @@ for(station in stationList){
   data$Pha_deg <- NISTradianTOdeg(data$Pha_rad)
   data$Station <- station
   
-  # Add to full dataset
-  dataAll <- rbind(data,dataAll)
-  
   # Save to CSV file
   write.table(format(data[,c("Amp_m","Pha_deg")], digits=4), file = paste("NOAA",station,"_Resynthesis",".txt", sep = ""),
               col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
