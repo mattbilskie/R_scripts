@@ -14,7 +14,7 @@
 
 library(ggplot2)
 library(lubridate)
-source("getNOSHarmonics.R")
+source("get_NOAA_Harmonics.R")
 
 setwd("./")
 
