@@ -56,3 +56,11 @@ for(station in stationList){
   
 }
 
+# Save out speeds
+temp.df = data.frame(data$Speed_rad_sec)
+colnames(temp.df)[1] <- "speed"
+temp.df$amp = "1.000"
+temp.df$pha = "0.000"
+temp.df$name = data$Name
+write.table(format(temp.df[,c("speed","amp","pha","name")], digits=10), file = paste("speeds.txt", sep = ""),
+                        col.names = FALSE, row.names = FALSE, sep = "\t", quote = FALSE)
