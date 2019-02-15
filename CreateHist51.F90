@@ -44,6 +44,7 @@
 
         OPEN(UNIT=21,FILE="inputs.txt",ACTION="READ")
         READ(21,*)numFiles
+        WRITE(100,'(I2)')numFiles
         DO I = 1, numFiles
             WRITE(100,'(I2)')I
             READ(21,*)inFile
