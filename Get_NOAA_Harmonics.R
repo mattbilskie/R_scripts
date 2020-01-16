@@ -14,9 +14,12 @@
 ############################################
 
 getNOSHarmonics <- function(gageID){
-
+  
 require(rvest) # For web-scraping
 require(NISTunits) # For radians/degrees conversion\
+
+# Load the NOS full constituent database of Names
+NOS_constit <- readRDS(file = "NOS_Constituents.rds")
 
 # Scrape NOS Tides/Currents Harmonics Page to obtain a table of harmonic constituent information
 #nosID <- '8741041'
@@ -28,6 +31,24 @@ text <- html_nodes(webpage,'td')
 data <- toString(html_text(text)) # toString converts it to a single line
 # parse data and move to data frame
 data.df <- read.table(text=data,sep = ",",col.names=c("ID", "Name", "Amp_m","Pha_deg","Speed_deg_hr","Desc"))
+
+# Compare obtained NOS constituents to the full NOS set that should be present (37 constituents)
+if (nrow(NOS_constit) != nrow(data.df)) {
+  
+  # we need to fill in the blanks
+  i <- 1
+  while (i <= nrow(NOS_constit)) {
+    if (i != data.df[i,]$ID || is.na(data.df[i,]$ID)) {
+      row <- NOS_constit[i,]
+      data.df <- rbind(data.df[1:i-1,],row,data.df[-(1:i-1),])
+      #i <- i + 1
+    } else {
+      i <- i + 1
+    }
+    
+  }
+  
+}
 
 # Prepare data for plotting
 const.df <- data.df
